@@ -1,0 +1,10 @@
+version: '2.4'
+services:
+    mysql:
+      image: mysql:5.7
+      container_name: browser-chat-mysql
+      ports:
+        - "3306:3306"
+      environment:
+        MYSQL_ROOT_PASSWORD: "3luproec"
+        MYSQL_DATABASE: "chat"
