@@ -1,9 +1,10 @@
 package user
 
 import (
-	"github.com/pkg/errors"
 	"github.com/vsantosalmeida/browser-chat/entity"
 	"github.com/vsantosalmeida/browser-chat/pkg/auth"
+
+	"github.com/pkg/errors"
 )
 
 // Service

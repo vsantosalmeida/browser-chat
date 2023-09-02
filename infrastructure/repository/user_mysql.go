@@ -1,9 +1,9 @@
 package repository
 
 import (
-	"gorm.io/gorm"
-
 	"github.com/vsantosalmeida/browser-chat/entity"
+
+	"gorm.io/gorm"
 )
 
 // UserMySQL mysql repo

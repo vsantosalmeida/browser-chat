@@ -2,6 +2,7 @@ package config
 
 import (
 	"github.com/vsantosalmeida/browser-chat/entity"
+
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
 )
@@ -14,6 +15,14 @@ func InitDB() *gorm.DB {
 	}
 
 	if err = db.Set("gorm:table_options", "ENGINE=InnoDB").AutoMigrate(&entity.User{}); err != nil {
+		panic(err.Error())
+	}
+
+	if err = db.Set("gorm:table_options", "ENGINE=InnoDB").AutoMigrate(&entity.Room{}); err != nil {
+		panic(err.Error())
+	}
+
+	if err = db.Set("gorm:table_options", "ENGINE=InnoDB").AutoMigrate(&entity.Message{}); err != nil {
 		panic(err.Error())
 	}
 
