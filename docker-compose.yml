@@ -8,3 +8,9 @@ services:
       environment:
         MYSQL_ROOT_PASSWORD: "3luproec"
         MYSQL_DATABASE: "chat"
+    rabbitmq:
+      image: rabbitmq:3-management-alpine
+      container_name: browser-chat-rabbitmq
+      ports:
+        - "5672:5672"
+        - "15672:15672"
