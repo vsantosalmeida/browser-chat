@@ -1,8 +1,11 @@
 package websocket
 
 import (
+	"context"
+	"encoding/json"
 	"net/http"
 	"sync"
+	"time"
 
 	"github.com/vsantosalmeida/browser-chat/entity"
 	"github.com/vsantosalmeida/browser-chat/pkg/auth"
@@ -34,17 +37,26 @@ type Server struct {
 	handlers    map[string]EventHandler
 	rooms       []*entity.Room
 	roomUseCase room.UseCase
+	broker      Broker
 	mu          sync.RWMutex
 }
 
+// CommandOutput result of executed command from chatbot.
+type CommandOutput struct {
+	RoomID  int    `json:"roomID"`
+	From    string `json:"from"`
+	Message string `json:"message"`
+}
+
 // NewServer Server builder.
-func NewServer(roomUseCase room.UseCase) *Server {
+func NewServer(roomUseCase room.UseCase, broker Broker) *Server {
 	s := &Server{
 		clients:     make(ClientList),
 		join:        make(chan *Client),
 		leave:       make(chan *Client),
 		handlers:    initEventHandlers(),
 		roomUseCase: roomUseCase,
+		broker:      broker,
 	}
 
 	rooms, err := s.roomUseCase.ListRooms()
@@ -58,12 +70,16 @@ func NewServer(roomUseCase room.UseCase) *Server {
 }
 
 // Start loop to receive Client connections or disconnections.
-func (s *Server) Start() {
-	log.Info("server started")
+func (s *Server) Start(ctx context.Context) {
+	go s.listenChatbotMessages(ctx)
 
 	for {
-		select {
+		if ctx.Err() == context.Canceled {
+			log.Warn("context canceled")
+			break
+		}
 
+		select {
 		case client := <-s.join:
 			s.joinClient(client)
 
@@ -132,6 +148,7 @@ func (s *Server) routeEvent(event Event, c *Client) error {
 func (s *Server) isValidRoom(id int) bool {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+
 	if found := findRoom(s.rooms, id); found {
 		return true
 	} else {
@@ -144,6 +161,57 @@ func (s *Server) isValidRoom(id int) bool {
 		s.rooms = rooms
 
 		return findRoom(s.rooms, id)
+	}
+}
+
+// listenChatbotMessages loop through the message channel and send the chatbot message
+// to all Clients in the chat room.
+func (s *Server) listenChatbotMessages(ctx context.Context) {
+	msgCH := make(chan []byte)
+	go s.broker.ReadMessage(ctx, msgCH)
+
+	for msg := range msgCH {
+		if ctx.Err() == context.Canceled {
+			log.Warn("context canceled")
+			return
+		}
+
+		var output CommandOutput
+		if err := json.Unmarshal(msg, &output); err != nil {
+			log.WithError(err).Error("could not decode chatbot message")
+			continue
+		}
+
+		log.WithField("CommandOutput", output).Info("received chatbot message")
+
+		if !s.isValidRoom(output.RoomID) {
+			log.Error("chat room not found")
+			continue
+		}
+
+		msgInput := SendMessageInputEvent{
+			Message: output.Message,
+			From:    output.From,
+			Sent:    time.Now(),
+		}
+
+		payload, err := json.Marshal(msgInput)
+		if err != nil {
+			log.WithError(err).Error("could not encode chatbot message")
+			continue
+		}
+
+		event := Event{
+			Action:  SendMessageAction,
+			Payload: payload,
+		}
+
+		// broadcast event to all clients in the same chat room
+		for client := range s.clients {
+			if client.RoomID == output.RoomID {
+				client.event <- event
+			}
+		}
 	}
 }
 
@@ -160,8 +228,9 @@ func findRoom(rooms []*entity.Room, id int) bool {
 
 func initEventHandlers() map[string]EventHandler {
 	handlers := map[string]EventHandler{
-		SendMessageAction: SendMessageHandler,
-		JoinRoomAction:    ChatRoomHandler,
+		SendMessageAction:        SendMessageHandler,
+		JoinRoomAction:           ChatRoomHandler,
+		SendChatbotCommandAction: ChatbotCommandHandler,
 	}
 
 	return handlers

@@ -1,6 +1,7 @@
 package websocket
 
 import (
+	"context"
 	"encoding/json"
 	"time"
 
@@ -20,8 +21,9 @@ type Event struct {
 type EventHandler func(event Event, c *Client) error
 
 const (
-	SendMessageAction = "sendMessage"
-	JoinRoomAction    = "joinRoom"
+	SendMessageAction        = "sendMessage"
+	JoinRoomAction           = "joinRoom"
+	SendChatbotCommandAction = "chatbotCommand"
 )
 
 // SendMessageInputEvent represents a message sent by a user to the chat room.
@@ -47,6 +49,7 @@ func SendMessageHandler(event Event, c *Client) error {
 	}
 	input.Sent = time.Now()
 
+	// error ignored to avoid disconnect a Client
 	go c.server.roomUseCase.CreateMessage(c.ID, c.RoomID, input.Message)
 
 	data, err := json.Marshal(input)
@@ -54,10 +57,12 @@ func SendMessageHandler(event Event, c *Client) error {
 		return errors.Errorf("could not encode event payload: %v", err)
 	}
 
-	var output Event
-	output.Payload = data
-	output.Action = SendMessageAction
+	output := Event{
+		Action:  SendMessageAction,
+		Payload: data,
+	}
 
+	// broadcast event to all clients in the same chat room
 	for client := range c.server.clients {
 		if client.RoomID == c.RoomID {
 			client.event <- output
@@ -83,6 +88,27 @@ func ChatRoomHandler(event Event, c *Client) error {
 	}
 
 	c.RoomID = changeRoomEvent.RoomID
+
+	return nil
+}
+
+// ChatbotCommandEvent command received from a Client.
+type ChatbotCommandEvent struct {
+	RoomID      int    `json:"roomID"`
+	From        string `json:"from"`
+	CommandName string `json:"commandName"`
+	Command     string `json:"command"`
+}
+
+func ChatbotCommandHandler(event Event, c *Client) error {
+	var chatbotEvent ChatbotCommandEvent
+	// decode the event payload to validate the schema
+	if err := json.Unmarshal(event.Payload, &chatbotEvent); err != nil {
+		return errors.Errorf("could not decode event payload: %v", err)
+	}
+
+	// error ignored to avoid disconnect a Client
+	go c.server.broker.WriteMessage(context.Background(), event.Payload)
 
 	return nil
 }

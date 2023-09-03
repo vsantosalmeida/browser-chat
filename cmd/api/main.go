@@ -1,25 +1,33 @@
 package main
 
 import (
+	"context"
 	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
 	"time"
 
 	"github.com/vsantosalmeida/browser-chat/api/midleware"
 	"github.com/vsantosalmeida/browser-chat/api/rest/handler"
 	"github.com/vsantosalmeida/browser-chat/api/websocket"
 	"github.com/vsantosalmeida/browser-chat/config"
+	"github.com/vsantosalmeida/browser-chat/infrastructure/broker"
 	"github.com/vsantosalmeida/browser-chat/infrastructure/repository"
 	"github.com/vsantosalmeida/browser-chat/usecase/room"
 	"github.com/vsantosalmeida/browser-chat/usecase/user"
 
 	"github.com/apex/log"
 	"github.com/gorilla/mux"
+	"github.com/pkg/errors"
 )
 
 func main() {
 	config.InitLogging()
 
 	db := config.InitDB()
+
+	ch := config.InitRabbitMQ()
 
 	// Setup User context
 	userRepo := repository.NewUserMySQL(db)
@@ -32,8 +40,11 @@ func main() {
 	roomHandler := handler.NewRoomHandler(roomSvc)
 
 	// Setup WebSocket context
-	wsServer := websocket.NewServer(roomSvc)
-	go wsServer.Start()
+	rabbitMQ := broker.NewRabbitMQ("chat-bot.command-output", "chat-bot.command-input", ch)
+	ctx, cancel := context.WithCancel(context.Background())
+	wsServer := websocket.NewServer(roomSvc, rabbitMQ)
+
+	go wsServer.Start(ctx)
 
 	// Setup HTTP handlers
 	r := mux.NewRouter()
@@ -58,7 +69,24 @@ func main() {
 		ReadTimeout:  15 * time.Second,
 	}
 
-	if err := srv.ListenAndServe(); err != nil {
-		log.Fatal("closing server")
+	go func() {
+		if err := srv.ListenAndServe(); !errors.Is(err, http.ErrServerClosed) {
+			log.Fatalf("unexpected server error: %v", err)
+		}
+	}()
+
+	log.Info("server started")
+
+	/// gracefully shutdown the server
+	sc := make(chan os.Signal, 1)
+	signal.Notify(sc, syscall.SIGINT, syscall.SIGTERM)
+	<-sc
+
+	cancel()
+
+	if err := srv.Shutdown(ctx); err != nil {
+		log.Fatalf("server shutdown error: %v", err)
 	}
+
+	log.Info("server stopped")
 }
