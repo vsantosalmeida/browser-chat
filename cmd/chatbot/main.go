@@ -20,25 +20,25 @@ func main() {
 	config.InitLogging()
 	ch := config.InitRabbitMQ()
 
-	readQeue, err := ch.QueueDeclare(
-		"chat-bot.command-input", // name
-		false,                    // durable
-		false,                    // delete when unused
-		false,                    // exclusive
-		false,                    // no-wait
-		nil,                      // arguments
+	readQueue, err := ch.QueueDeclare(
+		config.GetStingEnvVarOrPanic(config.ChatbotCommandInputQueue), // name
+		false, // durable
+		false, // delete when unused
+		false, // exclusive
+		false, // no-wait
+		nil,   // arguments
 	)
 	if err != nil {
 		log.WithError(err).Fatal("could not create read queue")
 	}
 
 	writeQeue, err := ch.QueueDeclare(
-		"chat-bot.command-output", // name
-		false,                     // durable
-		false,                     // delete when unused
-		false,                     // exclusive
-		false,                     // no-wait
-		nil,                       // arguments
+		config.GetStingEnvVarOrPanic(config.ChatbotCommandOutputQueue), // name
+		false, // durable
+		false, // delete when unused
+		false, // exclusive
+		false, // no-wait
+		nil,   // arguments
 	)
 	if err != nil {
 		log.WithError(err).Fatal("could not create write queue")
@@ -49,8 +49,8 @@ func main() {
 	}
 
 	stooqAPI := stooq.NewClient(httpClient)
-	rabbitMQ := broker.NewRabbitMQ(readQeue.Name, writeQeue.Name, ch)
-	svc := chatbot.NewService(rabbitMQ, stooqAPI, 1)
+	rabbitMQ := broker.NewRabbitMQ(readQueue.Name, writeQeue.Name, ch)
+	svc := chatbot.NewService(rabbitMQ, stooqAPI, config.GetIntEnvVarOrDefault(config.ChatbotMaxWorkers, 1))
 
 	ctx, cancel := context.WithCancel(context.Background())
 

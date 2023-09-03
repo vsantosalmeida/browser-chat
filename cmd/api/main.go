@@ -40,7 +40,11 @@ func main() {
 	roomHandler := handler.NewRoomHandler(roomSvc)
 
 	// Setup WebSocket context
-	rabbitMQ := broker.NewRabbitMQ("chat-bot.command-output", "chat-bot.command-input", ch)
+	rabbitMQ := broker.NewRabbitMQ(
+		config.GetStingEnvVarOrPanic(config.ChatbotCommandOutputQueue), // read queue
+		config.GetStingEnvVarOrPanic(config.ChatbotCommandInputQueue),  // write queue
+		ch,
+	)
 	ctx, cancel := context.WithCancel(context.Background())
 	wsServer := websocket.NewServer(roomSvc, rabbitMQ)
 

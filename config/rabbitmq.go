@@ -1,12 +1,23 @@
 package config
 
 import (
+	"fmt"
+
 	"github.com/apex/log"
 	amqp "github.com/rabbitmq/amqp091-go"
 )
 
+const amqpURL = "amqp://%s:%s@%s:5672/"
+
 func InitRabbitMQ() *amqp.Channel {
-	conn, err := amqp.Dial("amqp://guest:guest@localhost:5672/")
+	url := fmt.Sprintf(
+		amqpURL,
+		GetStingEnvVarOrPanic(RabbitMQUser),
+		GetStingEnvVarOrPanic(RabbitMQPass),
+		GetStingEnvVarOrPanic(RabbitMQHost),
+	)
+
+	conn, err := amqp.Dial(url)
 	if err != nil {
 		log.WithError(err).Fatal("could not dial to rabbitmq")
 	}
