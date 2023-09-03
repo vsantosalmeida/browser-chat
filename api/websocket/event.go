@@ -2,7 +2,6 @@ package websocket
 
 import (
 	"encoding/json"
-	"fmt"
 	"time"
 
 	"github.com/pkg/errors"
@@ -35,18 +34,17 @@ func SendMessageHandler(event Event, c *Client) error {
 
 	var input SendMessageInputEvent
 	if err := json.Unmarshal(event.Payload, &input); err != nil {
-		return fmt.Errorf("bad payload in request: %v", err)
+		return errors.Errorf("could not decode event payload: %v", err)
 	}
 	input.Sent = time.Now()
 
-	go c.server.persistMessage(c.ID, c.RoomID, input.Message)
+	go c.server.roomUseCase.CreateMessage(c.ID, c.RoomID, input.Message)
 
 	data, err := json.Marshal(input)
 	if err != nil {
-		return fmt.Errorf("failed to marshal broadcast message: %v", err)
+		return errors.Errorf("could not encode event payload: %v", err)
 	}
 
-	// Place payload into an Event
 	var output Event
 	output.Payload = data
 	output.Action = SendMessageAction
@@ -67,7 +65,7 @@ type ChangeRoomEvent struct {
 func ChatRoomHandler(event Event, c *Client) error {
 	var changeRoomEvent ChangeRoomEvent
 	if err := json.Unmarshal(event.Payload, &changeRoomEvent); err != nil {
-		return fmt.Errorf("bad payload in request: %v", err)
+		return errors.Errorf("could not decode event payload: %v", err)
 	}
 
 	if !c.server.isValidRoom(changeRoomEvent.RoomID) {

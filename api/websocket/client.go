@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"time"
 
+	"github.com/apex/log"
 	"github.com/gorilla/websocket"
 )
 
@@ -39,6 +40,10 @@ func (c *Client) readMessages() {
 		c.server.leave <- c
 	}()
 
+	logger := log.WithFields(log.Fields{
+		"UserID": c.ID,
+	})
+
 	c.conn.SetReadLimit(readLimit)
 	c.conn.SetReadDeadline(time.Now().Add(pongWait))
 	c.conn.SetPongHandler(c.handlePong)
@@ -47,19 +52,24 @@ func (c *Client) readMessages() {
 		_, payload, err := c.conn.ReadMessage()
 		if err != nil {
 			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
+				logger.WithError(err).Error("unexpected close error")
 			}
-			break
+			return
 		}
 
 		var event Event
 		if err = json.Unmarshal(payload, &event); err != nil {
 			// decoding errors should not stop the client connection
+			logger.WithError(err).Error("failed to decode event body")
 			continue
 		}
 
 		if err = c.server.routeEvent(event, c); err != nil {
-			break
+			logger.WithError(err).Error("failed to process event")
+			return
 		}
+
+		logger.WithField("event", event.Action).Info("event sent")
 	}
 }
 
@@ -71,26 +81,31 @@ func (c *Client) writeMessages() {
 		c.server.leave <- c
 	}()
 
+	logger := log.WithFields(log.Fields{
+		"UserID": c.ID,
+	})
+
 	for {
 		select {
-		case event, ok := <-c.event:
-			if !ok {
-				if err := c.conn.WriteMessage(websocket.CloseMessage, nil); err != nil {
-				}
-				return
-			}
-
+		case event := <-c.event:
 			b, err := json.Marshal(event)
 			if err != nil {
 				// encoding errors should not stop the client connection
+				logger.WithError(err).Error("failed to encode event body")
 				continue
 			}
 
 			if err = c.conn.WriteMessage(websocket.TextMessage, b); err != nil {
+				// write errors should not stop the client connection
+				logger.WithError(err).Error("failed to write message")
+				continue
 			}
+
+			logger.Info("event received")
 
 		case <-ticker.C:
 			if err := c.conn.WriteMessage(websocket.PingMessage, nil); err != nil {
+				logger.WithError(err).Error("ping timeout")
 				return
 			}
 

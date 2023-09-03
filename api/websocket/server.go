@@ -8,6 +8,7 @@ import (
 	"github.com/vsantosalmeida/browser-chat/pkg/auth"
 	"github.com/vsantosalmeida/browser-chat/usecase/room"
 
+	"github.com/apex/log"
 	"github.com/gorilla/websocket"
 	"github.com/pkg/errors"
 )
@@ -46,7 +47,7 @@ func NewServer(roomUseCase room.UseCase) *Server {
 
 	rooms, err := s.roomUseCase.ListRooms()
 	if err != nil {
-		panic(err.Error())
+		log.Fatalf("failed to load rooms: %v", err)
 	}
 
 	s.rooms = rooms
@@ -55,6 +56,8 @@ func NewServer(roomUseCase room.UseCase) *Server {
 }
 
 func (s *Server) Start() {
+	log.Info("server started")
+
 	for {
 		select {
 
@@ -71,6 +74,7 @@ func (s *Server) Start() {
 func (s *Server) ServeWS(w http.ResponseWriter, r *http.Request) {
 	userCtxValue := r.Context().Value(auth.UserContextKey)
 	if userCtxValue == nil {
+		log.Error("unauthorized connection")
 		w.WriteHeader(http.StatusUnauthorized)
 		return
 	}
@@ -92,12 +96,14 @@ func (s *Server) ServeWS(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) joinClient(client *Client) {
 	s.clients[client] = true
+	log.WithField("UserID", client.ID).Info("user connected")
 }
 
 func (s *Server) leaveClient(client *Client) {
 	if _, ok := s.clients[client]; ok {
 		client.conn.Close()
 		delete(s.clients, client)
+		log.WithField("UserID", client.ID).Info("user disconnected")
 	}
 }
 
@@ -109,6 +115,7 @@ func (s *Server) routeEvent(event Event, c *Client) error {
 		}
 		return nil
 	} else {
+		log.WithField("Action", event.Action).Error("invalid event action")
 		return ErrInvalidEventAction
 	}
 }
@@ -119,7 +126,7 @@ func (s *Server) isValidRoom(id int) bool {
 	if found := findRoom(s.rooms, id); found {
 		return true
 	} else {
-		// if room isn't found the server will try to retrieve from DB as a last chance
+		// if room isn't found server will try to retrieve from DB as a last chance
 		rooms, err := s.roomUseCase.ListRooms()
 		if err != nil {
 			return false
@@ -131,12 +138,6 @@ func (s *Server) isValidRoom(id int) bool {
 	}
 }
 
-func (s *Server) persistMessage(userID int, roomID int, content string) {
-	if err := s.roomUseCase.CreateMessage(userID, roomID, content); err != nil {
-		//log
-	}
-}
-
 func findRoom(rooms []*entity.Room, id int) bool {
 	for _, r := range rooms {
 		if r.ID == id {
@@ -144,6 +145,7 @@ func findRoom(rooms []*entity.Room, id int) bool {
 		}
 	}
 
+	log.WithField("RoomID", id).Warn("room not found")
 	return false
 }
 

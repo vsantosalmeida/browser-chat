@@ -1,7 +1,6 @@
 package main
 
 import (
-	"log"
 	"net/http"
 	"time"
 
@@ -13,10 +12,13 @@ import (
 	"github.com/vsantosalmeida/browser-chat/usecase/room"
 	"github.com/vsantosalmeida/browser-chat/usecase/user"
 
+	"github.com/apex/log"
 	"github.com/gorilla/mux"
 )
 
 func main() {
+	config.InitLogging()
+
 	db := config.InitDB()
 
 	// Setup User context
@@ -56,5 +58,7 @@ func main() {
 		ReadTimeout:  15 * time.Second,
 	}
 
-	log.Fatal(srv.ListenAndServe())
+	if err := srv.ListenAndServe(); err != nil {
+		log.Fatal("closing server")
+	}
 }
