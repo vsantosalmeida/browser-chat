@@ -8,6 +8,7 @@ import (
 	"github.com/vsantosalmeida/browser-chat/pkg/auth"
 )
 
+// AuthMiddleware middleware to validate an AuthenticatedUser and pass through context.
 func AuthMiddleware(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		bearer := r.Header.Get("Authorization")

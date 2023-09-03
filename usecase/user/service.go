@@ -8,18 +8,20 @@ import (
 	"github.com/pkg/errors"
 )
 
-// Service
+// Service implements UseCase interface.
 type Service struct {
 	repo Repository
 }
 
-// NewService
+// NewService Service builder.
 func NewService(r Repository) *Service {
 	return &Service{
 		repo: r,
 	}
 }
 
+// Authenticate retrieve user from DB and validate the password, if no error occurs a JWT token will be generated
+// and returned.
 func (s *Service) Authenticate(username, password string) (string, error) {
 	user, err := s.repo.FindByUsername(username)
 	if err != nil {
@@ -44,6 +46,7 @@ func (s *Service) Authenticate(username, password string) (string, error) {
 
 }
 
+// ListUsers retrieve all users from DB.
 func (s *Service) ListUsers() ([]*entity.User, error) {
 	users, err := s.repo.List()
 	if err != nil {
@@ -54,6 +57,7 @@ func (s *Service) ListUsers() ([]*entity.User, error) {
 	return users, nil
 }
 
+// CreateUser validate user input and create it in the DB.
 func (s *Service) CreateUser(username, password string) (int, error) {
 	user, err := entity.NewUser(username, password)
 	if err != nil {

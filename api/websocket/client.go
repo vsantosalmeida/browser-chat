@@ -9,11 +9,15 @@ import (
 )
 
 const (
-	pongWait   = 10 * time.Second
+	// pongWait time to wait for a client response.
+	pongWait = 10 * time.Second
+	// pingPeriod usually the ping period is less than a pong timeout, it uses 90% of pong timeout .
 	pingPeriod = (pongWait * 9) / 10
-	readLimit  = 1000
+	// readLimit max message bytes
+	readLimit = 1000
 )
 
+// Client represents a connected client in the chat Server.
 type Client struct {
 	conn     *websocket.Conn
 	server   *Server
@@ -23,7 +27,7 @@ type Client struct {
 	RoomID   int
 }
 
-// NewClient
+// NewClient Client builder.
 func NewClient(conn *websocket.Conn, server *Server, username string, id int) *Client {
 	return &Client{
 		conn:     conn,
@@ -34,7 +38,8 @@ func NewClient(conn *websocket.Conn, server *Server, username string, id int) *C
 	}
 }
 
-// readMessages
+// readMessages handle all events sent by a client and process it.
+// keeps a heartbeat connection to receive pong responses.
 func (c *Client) readMessages() {
 	defer func() {
 		c.server.leave <- c
@@ -73,7 +78,8 @@ func (c *Client) readMessages() {
 	}
 }
 
-// writeMessages
+// writeMessages handle the events to send to client.
+// keeps a heartbeat connection to send ping requests.
 func (c *Client) writeMessages() {
 	ticker := time.NewTicker(pingPeriod)
 	defer func() {

@@ -19,12 +19,14 @@ var (
 		WriteBufferSize: 1024,
 	}
 
+	// ErrInvalidEventAction invalid event action
 	ErrInvalidEventAction = errors.New("invalid event action")
 )
 
+// ClientList holds the current connected Clients with the Server.
 type ClientList map[*Client]bool
 
-// Server
+// Server handle the websocket connection between Clients and events.
 type Server struct {
 	clients     ClientList
 	join        chan *Client
@@ -35,7 +37,7 @@ type Server struct {
 	mu          sync.RWMutex
 }
 
-// NewServer
+// NewServer Server builder.
 func NewServer(roomUseCase room.UseCase) *Server {
 	s := &Server{
 		clients:     make(ClientList),
@@ -55,6 +57,7 @@ func NewServer(roomUseCase room.UseCase) *Server {
 	return s
 }
 
+// Start loop to receive Client connections or disconnections.
 func (s *Server) Start() {
 	log.Info("server started")
 
@@ -70,7 +73,8 @@ func (s *Server) Start() {
 	}
 }
 
-// ServeWS
+// ServeWS handle the websocket connections with an authenticated Client and starts the go routines
+// to listen for read and write events.
 func (s *Server) ServeWS(w http.ResponseWriter, r *http.Request) {
 	userCtxValue := r.Context().Value(auth.UserContextKey)
 	if userCtxValue == nil {
@@ -94,11 +98,13 @@ func (s *Server) ServeWS(w http.ResponseWriter, r *http.Request) {
 	s.join <- client
 }
 
+// joinClient adds a connected Client to the Server.
 func (s *Server) joinClient(client *Client) {
 	s.clients[client] = true
 	log.WithField("UserID", client.ID).Info("user connected")
 }
 
+// leaveClient disconnects a Client from the Server.
 func (s *Server) leaveClient(client *Client) {
 	if _, ok := s.clients[client]; ok {
 		client.conn.Close()
@@ -107,7 +113,8 @@ func (s *Server) leaveClient(client *Client) {
 	}
 }
 
-// routeEvent
+// routeEvent find the EventHandler for the respective event and process it.
+// it throws an error if the EventHandler is not found.
 func (s *Server) routeEvent(event Event, c *Client) error {
 	if handler, ok := s.handlers[event.Action]; ok {
 		if err := handler(event, c); err != nil {
@@ -120,6 +127,8 @@ func (s *Server) routeEvent(event Event, c *Client) error {
 	}
 }
 
+// isValidRoom checks if the given room ID exists in the Server memory.
+// will try to retrieve from DB if this chat room isn't in the memory.
 func (s *Server) isValidRoom(id int) bool {
 	s.mu.Lock()
 	defer s.mu.Unlock()

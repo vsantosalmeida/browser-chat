@@ -3,27 +3,29 @@ package config
 import (
 	"github.com/vsantosalmeida/browser-chat/entity"
 
+	"github.com/apex/log"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
 )
 
+// InitDB create the connection with DB and migrate the user, room and message tables.
 func InitDB() *gorm.DB {
 	dsn := "root:3luproec@tcp(127.0.0.1:3306)/chat?charset=utf8mb4&parseTime=True&loc=Local"
 	db, err := gorm.Open(mysql.Open(dsn), &gorm.Config{})
 	if err != nil {
-		panic(err.Error())
+		log.WithError(err).Fatal("failed to open db connection")
 	}
 
 	if err = db.Set("gorm:table_options", "ENGINE=InnoDB").AutoMigrate(&entity.User{}); err != nil {
-		panic(err.Error())
+		log.WithError(err).Fatal("failed to migrate user table")
 	}
 
 	if err = db.Set("gorm:table_options", "ENGINE=InnoDB").AutoMigrate(&entity.Room{}); err != nil {
-		panic(err.Error())
+		log.WithError(err).Fatal("failed to migrate room table")
 	}
 
 	if err = db.Set("gorm:table_options", "ENGINE=InnoDB").AutoMigrate(&entity.Message{}); err != nil {
-		panic(err.Error())
+		log.WithError(err).Fatal("failed to migrate message table")
 	}
 
 	return db

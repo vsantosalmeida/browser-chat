@@ -7,18 +7,19 @@ import (
 	"github.com/pkg/errors"
 )
 
-// Service
+// Service implements UseCase interface.
 type Service struct {
 	repo Repository
 }
 
-// NewService
+// NewService Service builder.
 func NewService(r Repository) *Service {
 	return &Service{
 		repo: r,
 	}
 }
 
+// ListRooms retrieve all rooms from DB.
 func (s *Service) ListRooms() ([]*entity.Room, error) {
 	rooms, err := s.repo.ListRooms()
 	if err != nil {
@@ -29,6 +30,7 @@ func (s *Service) ListRooms() ([]*entity.Room, error) {
 	return rooms, nil
 }
 
+// ListMessages given a room ID retrieve the latest messages from DB.
 func (s *Service) ListMessages(roomID int) ([]*entity.Message, error) {
 	mgs, err := s.repo.ListMessages(roomID)
 	if err != nil {
@@ -39,6 +41,7 @@ func (s *Service) ListMessages(roomID int) ([]*entity.Message, error) {
 	return mgs, nil
 }
 
+// CreateRoom create new room in DB.
 func (s *Service) CreateRoom() (int, error) {
 	id, err := s.repo.CreateRoom(&entity.Room{})
 	if err != nil {
@@ -51,6 +54,7 @@ func (s *Service) CreateRoom() (int, error) {
 	return id, nil
 }
 
+// CreateMessage create a user message in DB.
 func (s *Service) CreateMessage(userID, roomID int, content string) error {
 	logger := log.WithFields(log.Fields{
 		"RoomID": roomID,

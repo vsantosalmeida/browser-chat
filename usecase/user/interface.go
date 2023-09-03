@@ -2,24 +2,24 @@ package user
 
 import "github.com/vsantosalmeida/browser-chat/entity"
 
-// Reader interface
+// Reader handle the required methods to read users DB.
 type Reader interface {
 	FindByUsername(username string) (*entity.User, error)
 	List() ([]*entity.User, error)
 }
 
-// Writer user writer
+// Writer handle the required methods to write users DB.
 type Writer interface {
 	Create(e *entity.User) (int, error)
 }
 
-// Repository interface
+// Repository interface to bind Reader and Writer methods.
 type Repository interface {
 	Reader
 	Writer
 }
 
-// UseCase interface
+// UseCase service to handle the business rules for user context.
 type UseCase interface {
 	Authenticate(username, password string) (string, error)
 	ListUsers() ([]*entity.User, error)

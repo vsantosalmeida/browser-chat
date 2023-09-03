@@ -7,12 +7,16 @@ import (
 	"github.com/pkg/errors"
 )
 
+// ErrInvalidRoomID invalid room id
+var ErrInvalidRoomID = errors.New("invalid room id")
+
+// Event represents an event to execute some action to the Server or to the Client.
 type Event struct {
 	Action  string          `json:"action"`
 	Payload json.RawMessage `json:"payload"`
 }
 
-// EventHandler
+// EventHandler function to execute the required event.
 type EventHandler func(event Event, c *Client) error
 
 const (
@@ -20,16 +24,21 @@ const (
 	JoinRoomAction    = "joinRoom"
 )
 
-// SendMessageInputEvent
+// SendMessageInputEvent represents a message sent by a user to the chat room.
 type SendMessageInputEvent struct {
 	Message string    `json:"message"`
 	From    string    `json:"from"`
 	Sent    time.Time `json:"sent"`
 }
 
+// SendMessageHandler handles the client message and send it to all client in the chat room.
+//
+// if the chat room doesn't exist the event will not be executed.
+//
+// stores the user message in the DB for the respective chat room.
 func SendMessageHandler(event Event, c *Client) error {
 	if !c.server.isValidRoom(c.RoomID) {
-		return errors.New("invalid room id")
+		return ErrInvalidRoomID
 	}
 
 	var input SendMessageInputEvent
@@ -62,6 +71,7 @@ type ChangeRoomEvent struct {
 	RoomID int `json:"roomID"`
 }
 
+// ChatRoomHandler if the rooms exist will allow the user to join the chat room.
 func ChatRoomHandler(event Event, c *Client) error {
 	var changeRoomEvent ChangeRoomEvent
 	if err := json.Unmarshal(event.Payload, &changeRoomEvent); err != nil {
@@ -69,7 +79,7 @@ func ChatRoomHandler(event Event, c *Client) error {
 	}
 
 	if !c.server.isValidRoom(changeRoomEvent.RoomID) {
-		return errors.New("invalid room id")
+		return ErrInvalidRoomID
 	}
 
 	c.RoomID = changeRoomEvent.RoomID

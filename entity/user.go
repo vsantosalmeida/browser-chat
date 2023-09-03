@@ -6,6 +6,7 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
+// User represents a User stored in the DB.
 type User struct {
 	ID        int    `gorm:"primaryKey"`
 	Username  string `gorm:"index:idx_username,unique"`
@@ -14,7 +15,7 @@ type User struct {
 	UpdatedAt time.Time
 }
 
-// NewUser create a new user
+// NewUser User builder.
 func NewUser(userName, password string) (*User, error) {
 	u := &User{
 		Username: userName,
@@ -31,7 +32,7 @@ func NewUser(userName, password string) (*User, error) {
 	return u, nil
 }
 
-// Validate validate data
+// Validate validate data.
 func (u *User) Validate() error {
 	if u.Username == "" || u.Password == "" {
 		return ErrInvalidEntity

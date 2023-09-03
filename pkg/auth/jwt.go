@@ -9,6 +9,7 @@ import (
 	"github.com/pkg/errors"
 )
 
+// contextKey used to pass an entity.AuthenticatedUser through context.
 type contextKey string
 
 const (
@@ -17,21 +18,24 @@ const (
 	UserContextKey = contextKey("user")
 )
 
+// Claims implements entity.AuthenticatedUser interface
 type Claims struct {
 	ID       int    `json:"id"`
 	Username string `json:"username"`
 	jwt.StandardClaims
 }
 
+// GetId returns user's ID.
 func (c *Claims) GetId() int {
 	return c.ID
 }
 
+// GetUsername returns user's username.
 func (c *Claims) GetUsername() string {
 	return c.Username
 }
 
-// CreateJWTToken
+// CreateJWTToken given an entity.User generate a JWT token.
 func CreateJWTToken(user *entity.User) (string, error) {
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
 		"ID":        user.ID,
@@ -43,7 +47,7 @@ func CreateJWTToken(user *entity.User) (string, error) {
 	return tokenString, err
 }
 
-// ValidateJWTToken
+// ValidateJWTToken validate if the JWT token is valid and builds an entity.AuthenticatedUser.
 func ValidateJWTToken(tokenString string) (entity.AuthenticatedUser, error) {
 	token, err := jwt.ParseWithClaims(tokenString, &Claims{}, func(token *jwt.Token) (interface{}, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
