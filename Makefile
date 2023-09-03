@@ -9,12 +9,10 @@ clean:
 
 build-chat-api:
 	@ echo " ---       BUILDING CHAT API     --- "
-	@ $(MAKE) clean
 	@ go build -ldflags "-s -w -X main.version=$(VERSION)" -o $(CHAT_API_BINARY_NAME) cmd/chatapi/main.go
 	@ echo " ---      FINISH BUILD       --- "
 
 build-chat-bot:
 	@ echo " ---       BUILDING CHATBOT     --- "
-	@ $(MAKE) clean
-	@ go build -ldflags "-s -w -X main.version=$(VERSION)" -o $(CHAT_API_BINARY_NAME) cmd/chatbot/main.go
+	@ go build -ldflags "-s -w -X main.version=$(VERSION)" -o $(CHATBOT_BINARY_NAME) cmd/chatbot/main.go
 	@ echo " ---      FINISH BUILD       --- "

@@ -18,8 +18,8 @@ func InitDB() *gorm.DB {
 		dsnPattern,
 		GetStingEnvVarOrPanic(MySqlUser),
 		GetStingEnvVarOrPanic(MySqlPass),
-		GetStingEnvVarOrPanic(MySqlDB),
 		GetStingEnvVarOrPanic(MySqlHost),
+		GetStingEnvVarOrPanic(MySqlDB),
 	)
 	db, err := gorm.Open(mysql.Open(dsn), &gorm.Config{})
 	if err != nil {

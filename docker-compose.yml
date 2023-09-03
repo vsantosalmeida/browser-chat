@@ -8,6 +8,11 @@ services:
       environment:
         MYSQL_ROOT_PASSWORD: "3luproec"
         MYSQL_DATABASE: "chat"
+      healthcheck:
+        test: [ "CMD", "mysqladmin" ,"ping", "-h", "localhost" ]
+        interval: 5s
+        timeout: 10s
+        retries: 3
 
     rabbitmq:
       image: rabbitmq:3-management-alpine
@@ -15,6 +20,11 @@ services:
       ports:
         - "5672:5672"
         - "15672:15672"
+      healthcheck:
+        test: [ "CMD", "nc", "-z", "localhost", "5672" ]
+        interval: 10s
+        timeout: 10s
+        retries: 3
 
     chat-api:
       build:
@@ -24,7 +34,15 @@ services:
       env_file:
         - .env
       ports:
-        - "8080:8080"
+        - "80:80"
+      links:
+        - "mysql:mysql"
+        - "rabbitmq:rabbitmq"
+      depends_on:
+        mysql:
+          condition: service_healthy
+        rabbitmq:
+          condition: service_healthy
 
     chat-bot:
       build:
@@ -33,3 +51,8 @@ services:
       container_name: chat-bot
       env_file:
         - .env
+      links:
+        - "rabbitmq:rabbitmq"
+      depends_on:
+        rabbitmq:
+          condition: service_healthy
