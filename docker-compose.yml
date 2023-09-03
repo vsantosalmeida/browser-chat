@@ -8,9 +8,28 @@ services:
       environment:
         MYSQL_ROOT_PASSWORD: "3luproec"
         MYSQL_DATABASE: "chat"
+
     rabbitmq:
       image: rabbitmq:3-management-alpine
       container_name: browser-chat-rabbitmq
       ports:
         - "5672:5672"
         - "15672:15672"
+
+    chat-api:
+      build:
+        context: .
+        dockerfile: build/chat-api/Dockerfile
+      container_name: chat-api
+      env_file:
+        - .env
+      ports:
+        - "8080:8080"
+
+    chat-bot:
+      build:
+        context: .
+        dockerfile: build/chat-bot/Dockerfile
+      container_name: chat-bot
+      env_file:
+        - .env
