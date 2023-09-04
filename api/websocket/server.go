@@ -133,14 +133,11 @@ func (s *Server) leaveClient(client *Client) {
 // it throws an error if the EventHandler is not found.
 func (s *Server) routeEvent(event Event, c *Client) error {
 	if handler, ok := s.handlers[event.Action]; ok {
-		if err := handler(event, c); err != nil {
-			return err
-		}
-		return nil
-	} else {
-		log.WithField("Action", event.Action).Error("invalid event action")
-		return ErrInvalidEventAction
+		return handler(event, c)
 	}
+
+	log.WithField("Action", event.Action).Error("invalid event action")
+	return ErrInvalidEventAction
 }
 
 // isValidRoom checks if the given room ID exists in the Server memory.
