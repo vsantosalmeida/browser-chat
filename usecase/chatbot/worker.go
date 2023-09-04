@@ -41,7 +41,7 @@ func (w *Worker) StartAndConsume(ctx context.Context) {
 		if result, err := w.svc.ExecuteCommand(ctx, input.CommandName, input.Command); err == nil {
 			message = result
 		} else {
-			message = fmt.Sprintf("could not execute command: %s error: %q", input.CommandName, err)
+			message = fmt.Sprintf("could not execute command: %s error: %v", input.CommandName, err)
 		}
 
 		output := CommandOutput{
