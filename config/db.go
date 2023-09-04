@@ -8,6 +8,7 @@ import (
 	"github.com/apex/log"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
+	"gorm.io/gorm/logger"
 )
 
 const dsnPattern = "%s:%s@tcp(%s:3306)/%s?charset=utf8mb4&parseTime=True&loc=Local"
@@ -21,7 +22,9 @@ func InitDB() *gorm.DB {
 		GetStingEnvVarOrPanic(MySqlHost),
 		GetStingEnvVarOrPanic(MySqlDB),
 	)
-	db, err := gorm.Open(mysql.Open(dsn), &gorm.Config{})
+	db, err := gorm.Open(mysql.Open(dsn), &gorm.Config{
+		Logger: logger.Default.LogMode(logger.Silent),
+	})
 	if err != nil {
 		log.WithError(err).Fatal("failed to open db connection")
 	}

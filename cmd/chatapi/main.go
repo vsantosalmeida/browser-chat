@@ -70,6 +70,7 @@ func main() {
 		Handler:      r,
 		WriteTimeout: 15 * time.Second,
 		ReadTimeout:  15 * time.Second,
+		Addr:         ":8080",
 	}
 
 	go func() {
