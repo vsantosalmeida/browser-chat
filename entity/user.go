@@ -16,25 +16,25 @@ type User struct {
 }
 
 // NewUser User builder.
-func NewUser(userName, password string) (*User, error) {
+func NewUser(username, password string) (*User, error) {
+	if err := validate(username, password); err != nil {
+		return nil, ErrInvalidEntity
+	}
+
 	u := &User{
-		Username: userName,
+		Username: username,
 	}
 	pwd, err := generatePassword(password)
 	if err != nil {
 		return nil, err
 	}
 	u.Password = pwd
-
-	if err = u.Validate(); err != nil {
-		return nil, ErrInvalidEntity
-	}
 	return u, nil
 }
 
-// Validate validate data.
-func (u *User) Validate() error {
-	if u.Username == "" || u.Password == "" {
+// validate validate data.
+func validate(username, password string) error {
+	if username == "" || password == "" {
 		return ErrInvalidEntity
 	}
 
