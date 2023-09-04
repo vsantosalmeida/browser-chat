@@ -16,3 +16,8 @@ build-chat-bot:
 	@ echo " ---       BUILDING CHATBOT     --- "
 	@ go build -ldflags "-s -w -X main.version=$(VERSION)" -o $(CHATBOT_BINARY_NAME) cmd/chatbot/main.go
 	@ echo " ---      FINISH BUILD       --- "
+
+test:
+	@ echo " ---       RUNNING TESTS!     --- "
+	@ go test ./...
+	@ echo " ---      FINISHED!       --- "
