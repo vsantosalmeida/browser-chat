@@ -17,7 +17,8 @@ type Room struct {
 type Message struct {
 	ID        int       `json:"id"`
 	Content   string    `json:"content"`
-	CreatedAt time.Time `json:"created_at"`
+	From      string    `json:"from"`
+	CreatedAt time.Time `json:"createdAt"`
 }
 
 func MapEntityToExternalRooms(rooms []*entity.Room) []*Room {
@@ -44,6 +45,7 @@ func MapEntityToExternalMessages(mgs []*entity.Message) []*Message {
 			&Message{
 				ID:        m.ID,
 				Content:   m.Content,
+				From:      m.User.Username,
 				CreatedAt: m.CreatedAt,
 			},
 		)

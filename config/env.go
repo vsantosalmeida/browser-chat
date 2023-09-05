@@ -28,7 +28,7 @@ func GetStingEnvVarOrPanic(env EnvVar) string {
 	v := os.Getenv(string(env))
 
 	if v == "" {
-		log.Fatalf("var %s is required", v)
+		log.Fatalf("var %s is required", env)
 	}
 
 	return v

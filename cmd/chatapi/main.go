@@ -66,6 +66,9 @@ func main() {
 
 	r.Use(midleware.Cors)
 
+	fs := http.FileServer(http.Dir("./templates"))
+	http.Handle("/", fs)
+
 	srv := &http.Server{
 		Handler:      r,
 		WriteTimeout: 15 * time.Second,
@@ -75,6 +78,12 @@ func main() {
 
 	go func() {
 		if err := srv.ListenAndServe(); !errors.Is(err, http.ErrServerClosed) {
+			log.Fatalf("unexpected server error: %v", err)
+		}
+	}()
+
+	go func() {
+		if err := http.ListenAndServe(":3000", nil); !errors.Is(err, http.ErrServerClosed) {
 			log.Fatalf("unexpected server error: %v", err)
 		}
 	}()

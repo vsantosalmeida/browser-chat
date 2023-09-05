@@ -20,6 +20,9 @@ var (
 	upgrader = websocket.Upgrader{
 		ReadBufferSize:  1024,
 		WriteBufferSize: 1024,
+		CheckOrigin: func(r *http.Request) bool { // bypass origin check
+			return true
+		},
 	}
 
 	// ErrInvalidEventAction invalid event action
@@ -103,6 +106,7 @@ func (s *Server) ServeWS(w http.ResponseWriter, r *http.Request) {
 
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
@@ -186,7 +190,7 @@ func (s *Server) listenChatbotMessages(ctx context.Context) {
 			continue
 		}
 
-		msgInput := SendMessageInputEvent{
+		msgInput := MessageEvent{
 			Message: output.Message,
 			From:    output.From,
 			Sent:    time.Now(),
@@ -199,7 +203,7 @@ func (s *Server) listenChatbotMessages(ctx context.Context) {
 		}
 
 		event := Event{
-			Action:  SendMessageAction,
+			Action:  MessageReceivedAction,
 			Payload: payload,
 		}
 

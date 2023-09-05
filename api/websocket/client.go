@@ -74,7 +74,7 @@ func (c *Client) readMessages() {
 			return
 		}
 
-		logger.WithField("event", event.Action).Info("event sent")
+		logger.WithField("event", event.Action).Info("event processed")
 	}
 }
 

@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta http-equiv="X-UA-Compatible" content="ie=edge" />
+  <title>Let's Chat</title>
+</head>
+
+<body>
+<div class="center">
+  <h1>Browser Chat</h1>
+  <h3 id="chat-header"></h3>
+  <h3 id="connection-header">Connected to Websocket: false</h3>
+
+  <!--
+  Here is a form that allows us to select what Chatroom to be in
+  -->
+  <form id="chatroom-selection">
+    <label for="chatroom">Join chat room:</label>
+    <select id="chatroom" name="chatroom">
+    </select>
+    <input type="submit" value="Change chatroom">
+  </form>
+
+  <br>
+  <!--
+  Textarea to show messages from users
+  -->
+  <textarea class="messagearea" id="chatmessages" readonly name="chatmessages" rows="4" cols="50"
+            placeholder="Welcome to the general chatroom, here messages from others will appear"></textarea>
+
+  <br>
+  <!--
+  Chatroom-message form is used to send messages
+  -->
+  <form id="chatroom-message">
+    <label for="message">Message:</label>
+    <input type="text" id="message" name="message"><br><br>
+    <input type="submit" value="Send message">
+  </form>
+
+  <!--
+  login form is used to login
+  -->
+  <div style="border: 3px solid black;margin-top: 30px;">
+    <form id="login-form">
+      <label for="username">username:</label>
+      <input type="text" id="username" name="username"><br>
+      <label for="password">password:</label>
+      <input type="password" id="password" name="password"><br><br>
+      <input type="submit" value="Login">
+    </form>
+  </div>
+
+</div>
+
+<!--
+    Javascript that is used to Connect to Websocket and Handle New messages
+-->
+<script type="text/javascript">
+  let selectedchat = 1;
+
+  /**
+   * Event is used to wrap all messages Send and Received
+   * on the Websocket
+   * The type is used as a RPC
+   * */
+  class Event {
+    action;
+    constructor(action, payload) {
+      this.payload = payload;
+      this.action = action;
+    }
+  }
+
+  /**
+   * SendMessageEvent is used to send messages to other clients
+   * */
+  class SendMessageEvent {
+    constructor(message, from) {
+      this.message = message;
+      this.from = from;
+    }
+  }
+
+  /**
+   * NewMessageEvent is messages comming from clients
+   * */
+  class NewMessageEvent {
+    constructor(message, from, sent) {
+      this.message = message;
+      this.from = from;
+      this.sent = sent;
+    }
+  }
+
+  /**
+   * ChatbotCommandEvent send command for chatbot to be processed
+   * */
+  class ChatbotCommandEvent {
+    commandName;
+    constructor(roomID, from, commandName, command) {
+      this.roomID = roomID;
+      this.from = from;
+      this.commandName = commandName;
+      this.command = command;
+    }
+  }
+
+  /**
+   * routeEvent is a proxy function that routes
+   * events into their correct Handler
+   * based on the type field
+   * */
+  function routeEvent(event) {
+    switch (event.action) {
+      case "messageReceived":
+        // Format payload
+        const messageEvent = Object.assign(new NewMessageEvent, event.payload);
+        appendChatMessage(messageEvent);
+        break;
+      default:
+        alert("unsupported message type");
+        break;
+    }
+
+  }
+
+  /**
+   * appendChatMessage takes in new messages and adds them to the chat
+   * */
+  function appendChatMessage(messageEvent) {
+    var date = new Date(messageEvent.sent);
+    // format message
+    const formattedMsg = `${date.toLocaleString()}: ${messageEvent.from}: ${messageEvent.message}`;
+    // Append Message
+    textarea = document.getElementById("chatmessages");
+    textarea.innerHTML = textarea.innerHTML + "\n" + formattedMsg;
+    textarea.scrollTop = textarea.scrollHeight;
+  }
+
+  /**
+   * appendChatMessageFromAPI takes in the retrieved message from chat-api and adds to the chat
+   * */
+  function appendChatMessageFromAPI(message) {
+    var date = new Date(message.createdAt);
+    // format message
+    const formattedMsg = `${date.toLocaleString()}: ${message.from}: ${message.content}`;
+    // Append Message
+    textarea = document.getElementById("chatmessages");
+    textarea.innerHTML = textarea.innerHTML + "\n" + formattedMsg;
+    textarea.scrollTop = textarea.scrollHeight;
+  }
+
+  /**
+   * loadRooms retrieve all chat rooms from chat-api
+   * */
+  function loadRooms() {
+    fetch("http://localhost:8080/rooms", {
+      method: 'get',
+      mode: 'cors',
+    }).then((response) => {
+      if (response.ok) {
+        return response.json();
+      } else {
+        throw 'failed to retrieve chat rooms';
+      }
+    }).then((data) => {
+      for(let i=0; i<data.length; i++) {
+        let id = data[i].id
+        let chatDropDown = document.getElementById("chatroom");
+        let option = document.createElement("option");
+        option.text='Room ' + id;
+        chatDropDown.add(option);
+      }
+    });
+    return false;
+ }
+
+  /**
+   * loadRoomMessages retrieve the last 50 messages in the selected room
+   * */
+  function loadRoomMessages(roomID) {
+    fetch("http://localhost:8080/rooms/"+roomID+"/messages", {
+      method: 'get',
+      mode: 'cors',
+    }).then((response) => {
+      if (response.ok) {
+        return response.json();
+      } else {
+        throw 'failed to retrieve chat rooms';
+      }
+    }).then((data) => {
+      data.reverse();
+      for(let i=0; i<data.length; i++) {
+        appendChatMessageFromAPI(data[i])
+      }
+    });
+  }
+
+  /**
+   * JoinRoomEvent is used to switch chatroom
+   * */
+  class JoinRoomEvent {
+    constructor(id) {
+      this.roomID = id;
+    }
+  }
+  /**
+   * joinChatRoom will update the value of selectedchat
+   * and also notify the server that it changes chatroom
+   * */
+  function joinChatRoom() {
+    var chatRoom = document.getElementById("chatroom");
+
+    // extracts room id from string
+    let matches = chatRoom.value.match(/(\d+)/);
+    let roomID;
+    if (matches) {
+      roomID = parseInt(matches[0]);
+    }
+
+    if (roomID != null && roomID !== selectedchat) {
+      selectedchat = roomID;
+      header = document.getElementById("chat-header").innerHTML = "Currently in room: " + selectedchat;
+
+      let joinEvent = new JoinRoomEvent(selectedchat);
+      sendEvent("joinRoom", joinEvent);
+    }
+
+    loadRoomMessages(roomID);
+
+    return false;
+  }
+
+  /**
+   * sendMessage check message content to send as a message for all users or a command for chatbot
+   * */
+  function sendMessage() {
+    let newmessage = document.getElementById("message");
+    let from = document.getElementById("username").value;
+    if (newmessage != null) {
+      let content = newmessage.value;
+      let splitContent = content.split("=");
+
+      if (content.startsWith('/') && splitContent.length === 2) {
+        // removes trailing slash from command
+        let commandName = splitContent[0].replace(/^\//, '');
+        let command = splitContent[1];
+        let from = document.getElementById("username").value;
+        let chatbotEvent = new ChatbotCommandEvent(selectedchat, from, commandName, command);
+
+        sendEvent("chatbotCommand", chatbotEvent);
+        return false;
+      }
+
+      let outgoingEvent = new SendMessageEvent(newmessage.value, from);
+      sendEvent("sendMessage", outgoingEvent);
+    }
+    return false;
+  }
+
+  /**
+   * sendEvent
+   * action - the action to be executed by server
+   * payload - the data payload
+   * */
+  function sendEvent(action, payload) {
+    const event = new Event(action, payload);
+    // Format as JSON and send
+    conn.send(JSON.stringify(event));
+  }
+
+  /**
+   * login will send a login request to the server and then
+   * connect websocket
+   * */
+  function login() {
+    let formData = {
+      "username": document.getElementById("username").value,
+      "password": document.getElementById("password").value
+    }
+    // Send the request
+    fetch("http://localhost:8080/users/login", {
+      method: 'post',
+      body: JSON.stringify(formData),
+      mode: 'cors',
+    }).then((response) => {
+      if (response.ok) {
+        return response.json();
+      } else {
+        throw 'unauthorized';
+      }
+    }).then((data) => {
+      connectWebsocket(data.token);
+    }).catch((e) => { alert(e) });
+    return false;
+  }
+
+  /**
+   * ConnectWebsocket will connect to websocket and add listeners
+   * */
+  function connectWebsocket(token) {
+    // Check if the browser supports WebSocket
+    if (window["WebSocket"]) {
+      console.log("supports websockets");
+
+      conn = new WebSocket("ws://localhost:8080/ws?bearer=" + token);
+
+      // Onopen
+      conn.onopen = function (evt) {
+        document.getElementById("connection-header").innerHTML = "Connected to Websocket: true";
+
+        // join default room when connected
+        let joinRoom = new JoinRoomEvent(selectedchat);
+        sendEvent("joinRoom", joinRoom);
+
+        header = document.getElementById("chat-header").innerHTML = "Currently in room: " + selectedchat;
+        loadRoomMessages(selectedchat);
+      }
+
+      conn.onclose = function (evt) {
+        // Set disconnected
+        document.getElementById("connection-header").innerHTML = "Connected to Websocket: false";
+        throw 'disconnected';
+      }
+
+      // Add a listener to the onmessage event
+      conn.onmessage = function (evt) {
+        console.log(evt);
+        // parse websocket message as JSON
+        const eventData = JSON.parse(evt.data);
+        // Assign JSON data to new Event Object
+        const event = Object.assign(new Event, eventData);
+        // Let router manage message
+        routeEvent(event);
+      }
+
+    } else {
+      alert("Not supporting websockets");
+    }
+  }
+
+  /**
+   * Once the website loads
+   * */
+  window.onload = function () {
+    // Apply our listener functions to the submit event on both forms
+    // we do it this way to avoid redirects
+    document.getElementById("chatroom-selection").onsubmit = joinChatRoom;
+    document.getElementById("chatroom-message").onsubmit = sendMessage;
+    document.getElementById("login-form").onsubmit = login;
+    // get rooms from chat-api
+    loadRooms();
+  };
+</script>
+
+<style type="text/css">
+  body {
+    overflow: hidden;
+    padding: 0;
+    margin: 0;
+    width: 100%;
+    height: 100%;
+    background: rgb(52, 86, 139);
+  }
+
+  .center {
+    margin: auto;
+    width: 50%;
+    border: 3px solid green;
+    padding: 10px;
+  }
+</style>
+
+</body>
+
+</html>

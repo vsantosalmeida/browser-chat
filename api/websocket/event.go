@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"time"
 
+	"github.com/apex/log"
 	"github.com/pkg/errors"
 )
 
@@ -21,13 +22,16 @@ type Event struct {
 type EventHandler func(event Event, c *Client) error
 
 const (
-	SendMessageAction        = "sendMessage"
+	// SendMessageAction action to represent a message sent by a Client.
+	SendMessageAction = "sendMessage"
+	// MessageReceivedAction action to represent a message for a Client read.
+	MessageReceivedAction    = "messageReceived"
 	JoinRoomAction           = "joinRoom"
 	SendChatbotCommandAction = "chatbotCommand"
 )
 
-// SendMessageInputEvent represents a message sent by a user to the chat room.
-type SendMessageInputEvent struct {
+// MessageEvent represents a message sent or received by a user.
+type MessageEvent struct {
 	Message string    `json:"message"`
 	From    string    `json:"from"`
 	Sent    time.Time `json:"sent"`
@@ -43,7 +47,7 @@ func SendMessageHandler(event Event, c *Client) error {
 		return ErrInvalidRoomID
 	}
 
-	var input SendMessageInputEvent
+	var input MessageEvent
 	if err := json.Unmarshal(event.Payload, &input); err != nil {
 		return errors.Errorf("could not decode event payload: %v", err)
 	}
@@ -58,7 +62,7 @@ func SendMessageHandler(event Event, c *Client) error {
 	}
 
 	output := Event{
-		Action:  SendMessageAction,
+		Action:  MessageReceivedAction,
 		Payload: data,
 	}
 
@@ -72,22 +76,27 @@ func SendMessageHandler(event Event, c *Client) error {
 	return nil
 }
 
-type ChangeRoomEvent struct {
+type JoinRoomEvent struct {
 	RoomID int `json:"roomID"`
 }
 
 // ChatRoomHandler if the rooms exist will allow the user to join the chat room.
 func ChatRoomHandler(event Event, c *Client) error {
-	var changeRoomEvent ChangeRoomEvent
-	if err := json.Unmarshal(event.Payload, &changeRoomEvent); err != nil {
+	var joinRoomEvent JoinRoomEvent
+	if err := json.Unmarshal(event.Payload, &joinRoomEvent); err != nil {
 		return errors.Errorf("could not decode event payload: %v", err)
 	}
 
-	if !c.server.isValidRoom(changeRoomEvent.RoomID) {
+	if !c.server.isValidRoom(joinRoomEvent.RoomID) {
 		return ErrInvalidRoomID
 	}
 
-	c.RoomID = changeRoomEvent.RoomID
+	c.RoomID = joinRoomEvent.RoomID
+
+	log.WithFields(log.Fields{
+		"UserID": c.ID,
+		"RoomID": c.RoomID,
+	}).Info("user joined room")
 
 	return nil
 }

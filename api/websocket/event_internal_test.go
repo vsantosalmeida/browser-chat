@@ -38,7 +38,7 @@ func TestSendMessageHandler(t *testing.T) {
 		}
 
 		expected = Event{
-			Action:  SendMessageAction,
+			Action:  MessageReceivedAction,
 			Payload: []byte(eventOutputRaw),
 		}
 	)

@@ -20,7 +20,7 @@ func TestServerListenChatbotMessages(t *testing.T) {
 		eventOutputRaw = `{"message":"command executed","from":"chat-bot","sent":"2020-01-01T00:00:00Z"}`
 
 		expected = Event{
-			Action:  SendMessageAction,
+			Action:  MessageReceivedAction,
 			Payload: []byte(eventOutputRaw),
 		}
 	)

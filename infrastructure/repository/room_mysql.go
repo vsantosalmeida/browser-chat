@@ -31,7 +31,12 @@ func (r *RoomMySQL) ListRooms() ([]*entity.Room, error) {
 
 func (r *RoomMySQL) ListMessages(roomID int) ([]*entity.Message, error) {
 	var mgs []*entity.Message
-	if result := r.db.Where("room_id = ?", roomID).Limit(maxMessages).Order("created_at desc").Find(&mgs); result.Error != nil {
+	if result := r.db.
+		Preload("User").
+		Where("room_id = ?", roomID).
+		Limit(maxMessages).
+		Order("created_at desc").
+		Find(&mgs); result.Error != nil {
 		return nil, result.Error
 	}
 

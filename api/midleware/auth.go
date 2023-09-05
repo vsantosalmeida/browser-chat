@@ -2,20 +2,16 @@ package midleware
 
 import (
 	"context"
-	"net/http"
-	"strings"
-
 	"github.com/vsantosalmeida/browser-chat/pkg/auth"
+	"net/http"
 )
 
 // AuthMiddleware middleware to validate an AuthenticatedUser and pass through context.
 func AuthMiddleware(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		bearer := r.Header.Get("Authorization")
-		token := strings.TrimPrefix(bearer, "Bearer ")
-
-		if token != "" {
-			user, err := auth.ValidateJWTToken(token)
+		token, tok := r.URL.Query()["bearer"]
+		if tok && len(token) == 1 {
+			user, err := auth.ValidateJWTToken(token[0])
 			if err != nil {
 				http.Error(w, "forbidden", http.StatusForbidden)
 
