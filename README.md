@@ -16,6 +16,37 @@ Two applications to handle the requirements:
 - Rabbitmq
 - Docker
 
+### Project structure
+```bash
+    .
+    ├── api
+    │   ├── midleware #auth and CORS middlewares
+    │   ├── rest
+    │   │   ├── handler #request handlers
+    │   │   └── presenter #dto
+    │   └── websocket #server
+    ├── build #docker container build 
+    │   ├── chat-api 
+    │   └── chat-bot
+    ├── cmd #app startup
+    │   ├── chatapi
+    │   └── chatbot
+    ├── config
+    ├── docker-compose.yml
+    ├── entity #database entities
+    ├── infrastructure
+    │   ├── broker
+    │   └── repository
+    ├── pkg #shared packages
+    │   ├── auth #JWT auth
+    │   └── stooq #API client
+    ├── templates #HTML page
+    └── usecase #business rules
+        ├── chatbot
+        ├── room
+        └── user
+```
+
 ### How to run:
 - Create a `.env` file in the project root, use the `.env-example` to check what are the required env vars.
 - Run (if you don't have `docker` and `docker-compose` installed, follow the installation guides: [Docker](https://docs.docker.com/engine/install/) and [docker-compose](https://docs.docker.com/compose/install/))
