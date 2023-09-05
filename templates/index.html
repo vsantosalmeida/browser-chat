@@ -253,12 +253,18 @@
         let chatbotEvent = new ChatbotCommandEvent(selectedchat, from, commandName, command);
 
         sendEvent("chatbotCommand", chatbotEvent);
+        // clear input field
+        newmessage.value = '';
         return false;
       }
 
       let outgoingEvent = new SendMessageEvent(newmessage.value, from);
       sendEvent("sendMessage", outgoingEvent);
     }
+
+    // clear input field
+    newmessage.value = '';
+
     return false;
   }
 
