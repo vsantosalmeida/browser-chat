@@ -15,5 +15,7 @@ RUN make build-chat-api
 FROM alpine
 WORKDIR /app
 COPY --from=builder /app/bin/chat-api.bin .
+COPY --from=builder /app/templates templates/
 EXPOSE 8080
+EXPOSE 3000
 CMD ["./chat-api.bin"]
