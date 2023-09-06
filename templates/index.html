@@ -230,6 +230,7 @@
       sendEvent("joinRoom", joinEvent);
     }
 
+    textarea.innerHTML = '';
     loadRoomMessages(roomID);
 
     return false;
@@ -322,7 +323,6 @@
         // join default room when connected
         let joinRoom = new JoinRoomEvent(selectedchat);
         sendEvent("joinRoom", joinRoom);
-
         header = document.getElementById("chat-header").innerHTML = "Currently in room: " + selectedchat;
         loadRoomMessages(selectedchat);
       }
